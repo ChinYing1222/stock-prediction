@@ -2,6 +2,7 @@
 
 ## 專案概述
 「類神經網路商業應用」課程專案：以 LSTM 預測股價。使用 AAPL 過去 30 個交易日的資料，預測隔天收盤價（迴歸），並與線性迴歸、隨機森林及「明天＝今天」基準比較。
+共有兩個實驗：實驗一預測價格；實驗二改成輸入與目標都用變化率（預測漲跌幅），再換回價格，在相同的 182 個測試日上比較。
 組員：M11523001 李季錞、M11523002 洪親穎。
 
 ## 作業要求對照
@@ -11,7 +12,7 @@
 | (2) 至少兩種 AI 模型並說明 | `src/models.py`：LSTM、線性迴歸、隨機森林（＋naive 基準） |
 | (3) 完整可執行的 Python 程式並顯示結果 | `main.py` |
 | (4) 訓練、測試與評估，以表格／圖表比較 | `src/train.py`、`src/evaluate.py`、`results/` |
-| (5) 結果分析與具體改善方向 | `DEV_LOG.md`、書面報告 |
+| (5) 結果分析與具體改善方向 | `DEV_LOG.md`、實驗二（依實驗一的分析提出並實作的改善）、書面報告 |
 
 ## 技術棧
 Python 3.11、venv、PyTorch（CPU，自動偵測 cuda）、NumPy、pandas、scikit-learn、matplotlib、pytest。版本固定於 `requirements.txt`。
@@ -21,16 +22,16 @@ Python 3.11、venv、PyTorch（CPU，自動偵測 cuda）、NumPy、pandas、sci
 stock-prediction/
 ├── CLAUDE.md, DEV_LOG.md, README.md, requirements.txt, .gitignore
 ├── config.py        所有路徑與參數
-├── main.py          執行完整流程：資料 → EDA → 訓練 → 評估 → 印出比較表；--quick 快速測試
+├── main.py          執行完整流程：資料 → EDA → 訓練 → 評估 → 印出比較表；--experiment、--quick
 ├── src/
-│   ├── data.py      載入、清理、特徵、切分、標準化、建立視窗
+│   ├── data.py      載入、清理、特徵（含變化率）、切分、標準化、建立視窗、報酬率換回價格
 │   ├── eda.py       原始資料視覺化
 │   ├── models.py    naive 基準、線性迴歸、隨機森林、LSTM 類別
 │   ├── train.py     針對一個特徵組訓練所有模型
 │   └── evaluate.py  評估指標、預測圖、比較表與圖
 ├── tests/           pytest 基本測試
 ├── data/            AAPL_data.csv（唯讀）
-└── results/         PNG 圖表與 metrics.csv
+└── results/         完整實驗的 PNG 圖表、metrics.csv、metrics_ret.csv（quick/ 為快速測試輸出，不進 Git）
 ```
 
 ## 模組依賴規則
@@ -46,6 +47,8 @@ stock-prediction/
 - 模型：naive 基準、線性迴歸、隨機森林（200 棵，不改預測目標）、LSTM(64)→Dropout(0.2)→Linear；Adam 1e-3、MSE、batch 32、最多 100 回合、patience 10。
 - 指標（測試集，USD）：RMSE、MAE、MAPE(%)、方向正確率（naive 為 N/A）。
 - SEED = 42。
+- 實驗二（D12、D13）：特徵組 A_ret = ret；B_ret = ret、vol_chg、ma5_gap、ma20_gap；目標為隔天報酬率；StandardScaler 只用訓練資料 fit（目標使用獨立 scaler）；測試日期與超參數與實驗一相同；naive 預測報酬率 = 0；預測價格 = 今天收盤價 × (1 + 預測報酬率)；方向正確率 = 預測與實際報酬率正負號相同的比例；輸出檔名加 `_ret` 後綴。
+- 實驗一的行為與輸出不得改變。
 - 繪圖使用 Agg 後端、不呼叫 `plt.show()`、存檔後 `plt.close(fig)`；中文字型、dpi 150。
 
 ## 常用指令
@@ -55,10 +58,13 @@ py -3.11 -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
 
 # 完整實驗（組員執行）
-.venv\Scripts\python main.py
+.venv\Scripts\python main.py                        # 實驗一＋實驗二（預設 both）
+.venv\Scripts\python main.py --experiment price     # 只跑實驗一
+.venv\Scripts\python main.py --experiment return    # 只跑實驗二
 
-# 快速測試（只檢查流程；結果不具參考價值，輸出不可 commit）
-.venv\Scripts\python main.py --quick
+# 快速測試（只檢查流程；結果不具參考價值；輸出寫到 results/quick/，跑完後刪除）
+.venv\Scripts\python main.py --quick --experiment return
+.venv\Scripts\python main.py --quick --experiment both
 
 # 單元測試
 .venv\Scripts\python -m pytest -v
@@ -79,3 +85,7 @@ py -3.11 -m venv .venv
 - [x] P2 模型與訓練
 - [x] P3 評估與主程式
 - [x] P4 測試、文件與清理
+- [x] R1 記錄實驗一完整結果
+- [x] R2 實驗二（預測漲跌幅）
+- [x] R3 測試與文件
+- [ ] 組員執行實驗二完整實驗並記錄結果

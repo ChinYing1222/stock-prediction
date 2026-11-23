@@ -122,3 +122,35 @@
 - 問題與排解：無。
 - 實驗數據：檢查（不訓練模型）：A_ret、B_ret 的形狀為 (847/181/182, 30, 1 或 4)，測試日期與實際價格都與實驗一相同；y_test 反縮放後等於實際隔天報酬率。全期日報酬率平均 0.09%、標準差 1.46%。原有的 8 個 pytest 測試仍全部通過。
 - 下一步：R3 測試、快速測試與文件。
+
+### 2026-11-23／R3 測試與文件
+- 目標：為實驗二補上測試、做快速測試、更新文件。
+- 架構決策與理由：測試聚焦在兩個實驗能否直接比較的前提：目標是否對齊、價格換算是否正確、測試日期是否相同。
+- 實作內容：
+  - 新增 `tests/test_returns.py`，共 6 個測試：
+    - 報酬率目標 = 隔天報酬率（A_ret、B_ret 各一）
+    - 用手算數字驗證 return_to_price
+    - 用實際報酬率還原出實際價格
+    - 實驗二的測試日期、各切分筆數、今天收盤價都與實驗一相同（A_ret、B_ret 各一）
+  - 更新 README（`--experiment` 用法、兩個實驗的對照表、新的輸出檔）與 CLAUDE.md（概述、固定決策、常用指令、階段清單）。
+  - 刪除 `results/quick/`。
+- 問題與排解：無。
+- 實驗數據：
+  - `python -m pytest -v`：14 passed（原有 8 個加上新增 6 個）。
+  - `python main.py --quick --experiment return`：`results/quick/` 產生 7 個 `_ret` 相關檔案（metrics_ret.csv、pred_A_ret、pred_B_ret、lstm_loss_A_ret、lstm_loss_B_ret、metrics_bar_ret、eda_returns）。因為缺少 metrics.csv，compare 圖正確地跳過。`git status` 顯示 `results/` 已追蹤的檔案沒有變動。
+  - `python main.py --quick --experiment both`：`results/quick/` 產生 19 個檔案，含 compare_price_vs_return.png；`results/` 已追蹤的檔案同樣沒有變動。
+  - 實驗一的行為沒有改變：快速測試的 8 個數字與 P3 時的快速測試完全相同（到小數第 4 位）。快速測試與完整實驗逐一比較如下：
+
+    | 特徵組 | 模型 | 快速測試 RMSE | 完整實驗 RMSE | 說明 |
+    |---|---|---|---|---|
+    | A | Naive | 2.0562 | 2.0562 | 相同（與 --quick 無關） |
+    | A | LinearRegression | 2.0665 | 2.0665 | 相同（與 --quick 無關） |
+    | A | RandomForest | 32.6228 | 33.0017 | 預期不同（20 vs 200 棵樹） |
+    | A | LSTM | 5.8907 | 3.7259 | 預期不同（3 回合 vs early stopping） |
+    | B | Naive | 2.0562 | 2.0562 | 相同 |
+    | B | LinearRegression | 2.0920 | 2.0920 | 相同（與 --quick 無關） |
+    | B | RandomForest | 33.7730 | 33.2911 | 預期不同 |
+    | B | LSTM | 8.2674 | 6.6532 | 預期不同 |
+
+  - 實驗二快速測試的數字只用來確認流程，不列入實驗數據總表。線性迴歸與 --quick 無關，所以 A_ret 的 RMSE 2.050（方向正確率 55.49%）與 B_ret 的 2.188 在完整實驗中應該會相同；這也是第一次有模型的 RMSE 低於基準的 2.056。
+- 下一步：組員執行 `python main.py --experiment return`，把實驗二的結果填入實驗數據總表，並比較 compare_price_vs_return.png。
