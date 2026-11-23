@@ -63,3 +63,11 @@
 - 問題與排解：無。
 - 實驗數據：`python main.py --quick` 約 5 秒完成，產出 11 個檔案（5 張 EDA 圖、lstm_loss_A/B、pred_A/B、metrics_bar、metrics.csv）。快速測試的數字僅用來確認流程，不列入實驗數據總表：Naive RMSE 2.056、線性迴歸 A 2.067／B 2.092、隨機森林 A 32.62／B 33.77（預測值固定在約 129.7 USD）、LSTM（僅 3 回合）A 5.89／B 8.27。
 - 下一步：P4 測試、文件與清理。
+
+### 2026-11-23／P4 測試、文件與清理
+- 目標：補上 pytest 測試、完成文件，並清除快速測試產生的輸出。
+- 架構決策與理由：測試只涵蓋最容易出錯、又最影響結論可信度的地方：視窗是否對齊、有沒有資訊洩漏、基準是否正確、指標算得對不對。`tests/conftest.py` 把專案根目錄加入匯入路徑。
+- 實作內容：`tests/test_data.py`（視窗形狀與對齊；A／B 資料集形狀；scaler 只用訓練資料 fit，縮放後訓練收盤價最大值 = 1、測試期 > 1）；`tests/test_models.py`（naive = 視窗最後一天收盤價）；`tests/test_evaluate.py`（用手算數字驗證 RMSE／MAE／MAPE／方向正確率，naive 的方向正確率為 N/A）。補齊 README 的執行方式、方法摘要、輸出說明，以及 CLAUDE.md 的常用指令。刪除 results/ 中除了 .gitkeep 以外的檔案。
+- 問題與排解：無。
+- 實驗數據：`python -m pytest -v`：8 passed。
+- 下一步：組員執行完整實驗 `python main.py`，將結果填入「實驗數據總表」，並撰寫分析與改善方向（例如改預測漲跌幅以解決隨機森林無法外推的問題、加入更多技術指標、調整視窗長度與 LSTM 超參數）。

@@ -49,7 +49,20 @@ stock-prediction/
 - 繪圖使用 Agg 後端、不呼叫 `plt.show()`、存檔後 `plt.close(fig)`；中文字型、dpi 150。
 
 ## 常用指令
-（P4 補齊）
+```powershell
+# 建立環境（第一次）
+py -3.11 -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+
+# 完整實驗（組員執行）
+.venv\Scripts\python main.py
+
+# 快速測試（只檢查流程；結果不具參考價值，輸出不可 commit）
+.venv\Scripts\python main.py --quick
+
+# 單元測試
+.venv\Scripts\python -m pytest -v
+```
 
 ## 工作規則
 - 一律以繁體中文回覆；文件與註解用繁中，程式識別字用英文。
@@ -65,4 +78,4 @@ stock-prediction/
 - [x] P1 資料處理與視覺化
 - [x] P2 模型與訓練
 - [x] P3 評估與主程式
-- [ ] P4 測試、文件與清理
+- [x] P4 測試、文件與清理
