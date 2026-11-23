@@ -55,3 +55,11 @@
 - 問題與排解：無。
 - 實驗數據：檢查（特徵組 A、quick、LSTM 2 回合、RF 20 棵）：四個模型皆輸出 182 筆測試預測。隨機森林預測值全部約為 129.73 USD，證實無法外推至訓練期最高價以上（D08，報告需討論）。
 - 下一步：P3 評估與主程式。
+
+### 2026-11-23／P3 評估與主程式
+- 目標：實作評估指標、預測圖、比較表／圖，以及串接全部流程的 `main.py`。
+- 架構決策與理由：指標一律以 USD 在測試集計算；方向正確率以「今天收盤價」為比較基準，naive 基準記為 N/A；`metrics.csv` 中 mape 與 dir_acc 單位皆為 %；`--quick` 只減少 LSTM 回合數與樹的數量，流程與正式實驗完全相同。
+- 實作內容：`src/evaluate.py`（compute_metrics、evaluate_all、save_metrics、format_table、print_table、plot_predictions、plot_metrics_bar）；`main.py`（argparse `--quick`）。
+- 問題與排解：無。
+- 實驗數據：`python main.py --quick` 約 5 秒完成，產出 11 個檔案（5 張 EDA 圖、lstm_loss_A/B、pred_A/B、metrics_bar、metrics.csv）。快速測試的數字僅用來確認流程，不列入實驗數據總表：Naive RMSE 2.056、線性迴歸 A 2.067／B 2.092、隨機森林 A 32.62／B 33.77（預測值固定在約 129.7 USD）、LSTM（僅 3 回合）A 5.89／B 8.27。
+- 下一步：P4 測試、文件與清理。
