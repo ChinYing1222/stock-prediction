@@ -6,3 +6,6 @@ __pycache__/
 # data/ 只保留 AAPL_data.csv
 data/*
 !data/AAPL_data.csv
+
+# 快速測試輸出（python main.py --quick）
+results/quick/

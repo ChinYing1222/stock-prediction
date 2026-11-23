@@ -6,7 +6,8 @@ import torch
 # ===== 路徑 =====
 BASE_DIR = Path(__file__).resolve().parent  # 專案根目錄
 DATA_PATH = BASE_DIR / "data" / "AAPL_data.csv"  # 原始資料（唯讀，不可修改）
-RESULTS_DIR = BASE_DIR / "results"  # 圖表與 metrics.csv 輸出目錄
+RESULTS_DIR = BASE_DIR / "results"  # 圖表與 metrics.csv 輸出目錄（完整實驗）
+QUICK_RESULTS_DIR = RESULTS_DIR / "quick"  # --quick 快速測試的輸出目錄（不進 Git，不覆寫完整實驗結果）
 
 # ===== 資料 =====
 TICKER = "AAPL"  # 股票代號；若 CSV 有 Name 欄位則只保留此代號
@@ -22,6 +23,17 @@ TARGET_COL = "close"  # 預測目標欄位
 FEATURE_SETS = {
     "A": ["close"],
     "B": ["close", "volume", "ma5", "ma20"],
+}
+
+# ===== 實驗二：預測漲跌幅 =====
+RETURN_COL = "ret"  # 日報酬率欄位：close.pct_change()；實驗二的預測目標為隔天的 ret
+RETURN_SUFFIX = "_ret"  # 實驗二輸出檔名的後綴，例如 metrics_ret.csv、pred_A_ret.png
+
+# 實驗二的特徵組：全部為變化率，不受價格水準影響
+# vol_chg = log(volume / 前一天 volume)；ma5_gap = close / ma5 - 1；ma20_gap = close / ma20 - 1
+RETURN_FEATURE_SETS = {
+    "A_ret": ["ret"],
+    "B_ret": ["ret", "vol_chg", "ma5_gap", "ma20_gap"],
 }
 
 # ===== 模型參數 =====

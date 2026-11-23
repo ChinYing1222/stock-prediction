@@ -24,6 +24,11 @@ def naive_predict(today_close):
     return np.asarray(today_close, dtype=float).copy()
 
 
+def naive_return_predict(n):
+    """實驗二的基準：預測隔天報酬率 = 0（即明天＝今天，與實驗一的基準相同）。"""
+    return np.zeros(n, dtype=float)
+
+
 def flatten(X):
     """將 (N, window, n_features) 攤平成 (N, window * n_features)，供 scikit-learn 使用。"""
     return X.reshape(len(X), -1)

@@ -101,3 +101,22 @@ def run_eda(df, train_end_row, val_end_row):
         plot_corr(df),
         plot_split(df, train_end_row, val_end_row),
     ]
+
+
+def plot_returns(df):
+    """實驗二：日報酬率的時間序列與分布直方圖，存成 eda_returns.png。"""
+    ret_pct = df[config.RETURN_COL] * 100
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 7))
+    ax1.plot(df["date"], ret_pct, linewidth=0.8, color="tab:blue")
+    ax1.axhline(0, color="gray", linewidth=0.8)
+    ax1.set_title(f"{config.TICKER} 日報酬率")
+    ax1.set_xlabel("日期")
+    ax1.set_ylabel("日報酬率（%）")
+    ax1.grid(alpha=0.3)
+    ax2.hist(ret_pct, bins=60, color="tab:blue", edgecolor="white")
+    ax2.axvline(0, color="gray", linewidth=0.8)
+    ax2.set_title(f"日報酬率分布（平均 {ret_pct.mean():.3f}%，標準差 {ret_pct.std():.3f}%）")
+    ax2.set_xlabel("日報酬率（%）")
+    ax2.set_ylabel("天數")
+    ax2.grid(alpha=0.3)
+    return _save(fig, "eda_returns.png")

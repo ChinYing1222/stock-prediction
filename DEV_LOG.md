@@ -14,6 +14,8 @@
 | D09 | 2026-11-23 | LSTM 使用 PyTorch | 沿用上一個專案熟悉的套件 |
 | D10 | 2026-11-23 | 完整實驗由組員手動執行，Claude Code 只做快速測試 | 可自行掌控與觀察訓練 |
 | D11 | 2026-11-23 | 只有 AAPL_data.csv 進 Git，GitHub 由組員最後自行建立與上傳 | 檔案小，clone 後即可執行 |
+| D12 | 2026-11-23 | 新增實驗二：輸入與輸出改為變化率 | 實驗一中隨機森林與 LSTM 因測試期價格超出訓練範圍而失準；變化率不受價格水準影響 |
+| D13 | 2026-11-23 | 實驗二沿用實驗一的測試日期與超參數 | 確保兩個實驗可直接比較 |
 
 ## 實驗數據總表
 測試集 182 天（2017-05-19 ~ 2018-02-07），單位 USD。
@@ -97,3 +99,26 @@
   3. **隨機森林預測值是一條約 129 USD 的水平線。** 測試期價格（145–180 USD）高於訓練期最高價（約 133 USD），而隨機森林的輸出是訓練目標的平均值，無法外推到訓練範圍之外，RMSE 因此高達約 33。
   4. **LSTM 隨著價格上漲越低估越多。** MinMax 縮放的範圍是用訓練資料決定的，測試期輸入的縮放值超過 1，落在模型沒看過的區域。特徵組 B 有更多超出範圍的特徵（ma5、ma20 和收盤價一樣超出訓練範圍），所以表現更差（6.653 vs 3.726）。
 - 下一步：實驗二，把輸入與預測目標都改成變化率（漲跌幅），讓模型不受價格水準影響（見 D12、D13）。
+
+### 2026-11-23／R2 實驗二（預測漲跌幅）
+- 目標：實作實驗二，輸入與預測目標都改為變化率，並在與實驗一相同的 182 個測試日上比較。
+- 架構決策與理由（D12、D13）：
+  - 特徵：ret = close.pct_change()；vol_chg = log(volume / 前一天 volume)；ma5_gap = close / ma5 − 1；ma20_gap = close / ma20 − 1。特徵組 A_ret = [ret]，B_ret = [ret, vol_chg, ma5_gap, ma20_gap]。
+  - 目標：隔天報酬率 r(t+1) = close(t+1) / close(t) − 1，視窗同樣是 30 天。
+  - 對齊：變化率在清理後的完整資料上計算，再刪除前 19 列（只有這些列的 ma20_gap 未定義）。這樣資料列、視窗、切分（847／181／182）都與實驗一完全相同；對 A_ret 而言，最早的訓練目標所需的輸入本來就從第 19 列開始，所以沒有損失任何樣本。main.py 會用 assert 確認測試日期與實驗一相同。
+  - 標準化：StandardScaler 只用訓練資料列 fit，目標另外用一個 scaler。
+  - 模型與超參數與實驗一完全相同；naive 基準預測報酬率 = 0，等同於實驗一的「明天＝今天」。
+  - 評估：pred_price = today_close × (1 + pred_return)，再用實驗一相同的函式計算 USD 指標。因為 today_close > 0，sign(預測價格 − 今天收盤) = sign(預測報酬率)，所以方向正確率就是「預測與實際報酬率正負號相同」的比例。
+  - `--quick` 的輸出只寫到 `results/quick/`（已加入 .gitignore），不會覆寫完整實驗的結果。
+- 實作內容：
+  - `config.py`：QUICK_RESULTS_DIR、RETURN_COL、RETURN_SUFFIX、RETURN_FEATURE_SETS。
+  - `src/data.py`：add_features 多算 4 個變化率欄位；新增 prepare_return_dataset、return_to_price。
+  - `src/models.py`：naive_return_predict。
+  - `src/train.py`：train_all 依目標類型選擇 naive 的算法。
+  - `src/evaluate.py`：save_metrics、plot_metrics_bar、print_table 增加檔名或標題參數；新增 plot_compare_price_vs_return。
+  - `src/eda.py`：plot_returns → eda_returns.png。
+  - `main.py`：新增 `--experiment {price,return,both}`，流程拆成 run_price 與 run_return。
+  - 實驗一的程式邏輯沒有改動，只多了選用參數與額外欄位。
+- 問題與排解：無。
+- 實驗數據：檢查（不訓練模型）：A_ret、B_ret 的形狀為 (847/181/182, 30, 1 或 4)，測試日期與實際價格都與實驗一相同；y_test 反縮放後等於實際隔天報酬率。全期日報酬率平均 0.09%、標準差 1.46%。原有的 8 個 pytest 測試仍全部通過。
+- 下一步：R3 測試、快速測試與文件。

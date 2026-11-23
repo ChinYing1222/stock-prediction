@@ -1,7 +1,7 @@
 """資料處理：載入、清理、特徵、切分、標準化、建立視窗。"""
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 import config
 
@@ -53,10 +53,19 @@ def clean(df, verbose=True):
 
 
 def add_features(df):
-    """新增 ma5、ma20，並刪除前 MA_LONG-1 筆（移動平均不完整的列）。"""
+    """新增 ma5、ma20 與實驗二的變化率特徵，並刪除前 MA_LONG-1 筆（移動平均不完整的列）。
+
+    變化率特徵在刪除前計算，所以保留下來的第一列也有 ret 與 vol_chg。
+    ma20_gap 同樣只在前 MA_LONG-1 筆未定義，因此實驗一與實驗二使用完全相同的資料列。
+    """
     df = df.copy()
     df["ma5"] = df["close"].rolling(config.MA_SHORT).mean()
     df["ma20"] = df["close"].rolling(config.MA_LONG).mean()
+    # 實驗二：變化率特徵（實驗一不使用，不影響實驗一）
+    df["ret"] = df["close"].pct_change()
+    df["vol_chg"] = np.log(df["volume"] / df["volume"].shift(1))
+    df["ma5_gap"] = df["close"] / df["ma5"] - 1
+    df["ma20_gap"] = df["close"] / df["ma20"] - 1
     return df.iloc[config.MA_LONG - 1:].reset_index(drop=True)
 
 
@@ -114,6 +123,7 @@ def prepare_dataset(df, feature_set, window=config.WINDOW):
 
     return {
         "feature_set": feature_set,
+        "target": "price",
         "features": cols,
         "X_train": X[tr], "y_train": y[tr],
         "X_val": X[va], "y_val": y[va],
@@ -126,3 +136,60 @@ def prepare_dataset(df, feature_set, window=config.WINDOW):
         "train_end_row": train_end_row,
         "val_end_row": val_end_row,
     }
+
+
+def prepare_return_dataset(df, feature_set, window=config.WINDOW):
+    """實驗二：輸入為變化率特徵，目標為隔天報酬率 r(t+1) = close(t+1) / close(t) - 1。
+
+    使用與實驗一相同的資料列、視窗與切分，所以目標日期（含 182 個測試日）完全相同。
+    StandardScaler 只用「最後一個訓練目標日（含）以前」的資料列 fit；目標另用一個 scaler。
+    回傳的鍵與 prepare_dataset 相同（test_actual、test_today_close 仍為 USD），
+    另加 test_actual_return（隔天實際報酬率）。
+    """
+    cols = config.RETURN_FEATURE_SETS[feature_set]
+    values = df[cols].to_numpy(dtype=float)
+    ret = df[config.RETURN_COL].to_numpy(dtype=float)
+    close = df[config.TARGET_COL].to_numpy(dtype=float)
+    if not np.isfinite(values).all():
+        raise ValueError(f"特徵組 {feature_set} 含有未定義的值（NaN 或 inf）")
+
+    n_samples = len(df) - window
+    n_train, n_val = split_indices(n_samples)
+    train_end_row = window + n_train
+    val_end_row = train_end_row + n_val
+
+    feature_scaler = StandardScaler().fit(values[:train_end_row])
+    target_scaler = StandardScaler().fit(ret[:train_end_row].reshape(-1, 1))
+    scaled_values = feature_scaler.transform(values)
+    scaled_ret = target_scaler.transform(ret.reshape(-1, 1)).ravel()
+
+    X, y = make_windows(scaled_values, scaled_ret, window)
+    tr = slice(0, n_train)
+    va = slice(n_train, n_train + n_val)
+    te = slice(n_train + n_val, n_samples)
+
+    today_close = close[window - 1:-1]
+    actual = close[window:]
+    dates = df["date"].to_numpy()[window:]
+
+    return {
+        "feature_set": feature_set,
+        "target": "return",
+        "features": cols,
+        "X_train": X[tr], "y_train": y[tr],
+        "X_val": X[va], "y_val": y[va],
+        "X_test": X[te], "y_test": y[te],
+        "feature_scaler": feature_scaler,
+        "target_scaler": target_scaler,
+        "test_dates": dates[te],
+        "test_today_close": today_close[te],
+        "test_actual": actual[te],
+        "test_actual_return": ret[window:][te],
+        "train_end_row": train_end_row,
+        "val_end_row": val_end_row,
+    }
+
+
+def return_to_price(today_close, ret):
+    """把預測的報酬率換回價格：pred_price = today_close * (1 + ret)。"""
+    return np.asarray(today_close, dtype=float) * (1 + np.asarray(ret, dtype=float))

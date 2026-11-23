@@ -109,7 +109,8 @@ def plot_loss(history, feature_set):
 def train_all(data, quick=False, verbose=True):
     """針對一個特徵組訓練所有模型，回傳 (預測 dict, LSTM history)。
 
-    預測 dict 的鍵為模型名稱，值為測試集的 USD 預測值（已反轉換）。
+    預測 dict 的鍵為模型名稱，值為測試集預測值（已反轉換回目標單位）：
+    實驗一（data["target"] == "price"）為 USD 價格；實驗二（"return"）為隔天報酬率。
     quick=True 時 LSTM 最多 3 回合、隨機森林 20 棵樹，僅供快速測試。
     """
     def inverse(pred_scaled):
@@ -120,7 +121,10 @@ def train_all(data, quick=False, verbose=True):
     n_trees = config.QUICK_RF_N_ESTIMATORS if quick else config.RF_N_ESTIMATORS
     max_epochs = config.QUICK_LSTM_EPOCHS if quick else config.LSTM_MAX_EPOCHS
 
-    preds = {"Naive": models.naive_predict(data["test_today_close"])}
+    if data["target"] == "return":
+        preds = {"Naive": models.naive_return_predict(len(X_te))}
+    else:
+        preds = {"Naive": models.naive_predict(data["test_today_close"])}
 
     if verbose:
         print(f"[{data['feature_set']}] 訓練線性迴歸")
