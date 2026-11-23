@@ -1,0 +1,9 @@
+feature_set,model,rmse,mae,mape,dir_acc
+A,Naive,2.0562,1.4514,0.9057,N/A
+A,LinearRegression,2.0665,1.4781,0.9219,50.0000
+A,RandomForest,33.0017,31.4158,19.2241,47.8022
+A,LSTM,3.7259,3.0098,1.8446,50.0000
+B,Naive,2.0562,1.4514,0.9057,N/A
+B,LinearRegression,2.0920,1.4830,0.9258,50.5495
+B,RandomForest,33.2911,31.7176,19.4124,47.8022
+B,LSTM,6.6532,5.6544,3.4341,47.8022
